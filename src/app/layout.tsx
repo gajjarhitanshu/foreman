@@ -17,7 +17,7 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Flowdesk",
+  title: "Foreman",
   description: "AI-native task, timesheet & chat platform",
 };
 

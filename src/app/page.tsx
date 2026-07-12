@@ -23,7 +23,7 @@ export default function Home() {
     <div className="flex flex-1 items-center justify-center bg-background">
       <div className="flex items-center gap-2 text-muted-foreground text-sm">
         <span className="size-2 rounded-full bg-primary animate-pulse" />
-        Loading Flowdesk…
+        Loading Foreman…
       </div>
     </div>
   );

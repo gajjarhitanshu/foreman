@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  # NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are intentionally
+  # public (Next.js inlines NEXT_PUBLIC_* vars into the client bundle, and the
+  # Supabase anon key is a publishable key protected by RLS, not a secret).
+  # Netlify's secret scanner doesn't know that and fails the build on false
+  # positives — this tells it to skip those two keys specifically.
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY"

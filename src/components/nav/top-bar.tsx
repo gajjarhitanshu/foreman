@@ -67,7 +67,7 @@ export function TopBar() {
     <header className="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card px-4">
       <Link href="/board" className="flex items-center gap-2">
         <span className="size-6 rounded-md bg-primary" />
-        <span className="hidden font-semibold text-foreground sm:inline">Flowdesk</span>
+        <span className="hidden font-semibold text-foreground sm:inline">Foreman</span>
       </Link>
 
       <div className="flex flex-1 justify-center">

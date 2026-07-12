@@ -46,7 +46,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 items-center justify-center bg-background">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span className="size-2 animate-pulse rounded-full bg-primary" />
-          Loading Flowdesk…
+          Loading Foreman…
         </div>
       </div>
     );
