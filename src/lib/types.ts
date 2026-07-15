@@ -93,11 +93,21 @@ export interface ChatClarify {
   options: ChatClarifyOption[];
 }
 
-export interface ChatSummaryRow {
-  projectId: string;
-  projectName: string;
+/**
+ * One row of an "hours invested vs wasted" chart — approved hours are
+ * validated/invested work, pending is unresolved, rejected is wasted
+ * (a manager explicitly declined it). hours is the total of the three.
+ */
+export interface HoursBreakdownRow {
+  key: string;
+  label: string;
+  approvedHours: number;
+  pendingHours: number;
+  rejectedHours: number;
   hours: number;
 }
+
+export type ChatSummaryRow = HoursBreakdownRow & { projectId: string; projectName: string };
 
 export interface ChatSummary {
   userId: string;
@@ -106,8 +116,23 @@ export interface ChatSummary {
   tasksCompleted: number;
   tasksInProgress: number;
   totalHours: number;
+  approvedHours: number;
   pendingHours: number;
+  rejectedHours: number;
   byProject: ChatSummaryRow[];
+  csvRows: string[][];
+}
+
+/** Manager-only rollup across one or more projects they manage. */
+export interface TeamSummary {
+  scopeLabel: string;
+  rangeLabel: string;
+  totalHours: number;
+  approvedHours: number;
+  pendingHours: number;
+  rejectedHours: number;
+  byProject: HoursBreakdownRow[];
+  byMember: HoursBreakdownRow[];
   csvRows: string[][];
 }
 
@@ -121,5 +146,6 @@ export interface ChatMessage {
   clarify?: ChatClarify;
   clarifyResolved?: string;
   summary?: ChatSummary;
+  teamSummary?: TeamSummary;
   createdAt: string;
 }

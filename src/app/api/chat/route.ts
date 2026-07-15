@@ -5,7 +5,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { toUser, toProject, toProjectMember, toTask, toTimesheetEntry } from "@/lib/supabase/mappers";
 import { errorResponse } from "@/lib/api-response";
 import { canQuerySummaryFor } from "@/lib/permissions";
-import { buildSummary } from "@/lib/summary";
+import { buildSummary, buildTeamSummary } from "@/lib/summary";
 import type {
   ChatAction,
   ChatActionType,
@@ -110,6 +110,26 @@ const tools: Anthropic.Tool[] = [
         rangeLabel: { type: "string", description: "Short human label for the range, e.g. 'this week', 'July 2026'." },
       },
       required: ["targetUserId", "rangeStart", "rangeEnd", "rangeLabel"],
+    },
+  },
+  {
+    name: "get_team_summary",
+    description:
+      "Read-only, manager-only. Aggregate hours across one or more projects the acting user manages, for a date range: hours by project and hours by team member, each split into approved/pending/rejected so the manager can see where time is going and how much of it was validated versus wasted (rejected = wasted). Only usable by a manager, on projects they manage — never on a project they don't manage. No confirmation needed.",
+    input_schema: {
+      type: "object",
+      properties: {
+        projectIds: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Exact project ids from the context below that the acting user manages. Omit or pass an empty array to mean every project they manage.",
+        },
+        rangeStart: { type: "string", description: "ISO date yyyy-MM-dd, inclusive." },
+        rangeEnd: { type: "string", description: "ISO date yyyy-MM-dd, inclusive." },
+        rangeLabel: { type: "string", description: "Short human label for the range, e.g. 'this week', 'July 2026'." },
+      },
+      required: ["rangeStart", "rangeEnd", "rangeLabel"],
     },
   },
   {
@@ -254,6 +274,7 @@ Rules:
 - For a request naming multiple tasks (e.g. "mark ENG-1 and ENG-2 done"), call update_task_status once per task in the same turn.
 - reject_timesheet always needs a real reason. If the user didn't give one, ask for it in plain text instead of calling the tool with an empty reason.
 - get_summary is read-only and needs no confirmation — call it directly for any "how's X doing" / "summarize" / "how many hours" question.
+- get_team_summary is read-only, needs no confirmation, and is for a manager asking about their team/project as a whole rather than one person — e.g. "how's my team doing this month", "where is Project B's time going". Only propose project ids the acting user actually manages (see the membership list below); the server re-checks this regardless.
 - Only use ask_clarifying_question when a reference is genuinely ambiguous even with the context below. Don't ask about things you can resolve yourself.
 - Resolve relative dates ("today", "yesterday", "last month", "this week") against today's date above.
 
@@ -368,6 +389,35 @@ export async function POST(request: Request) {
         textParts.join("\n").trim() ||
         `${targetUser.name}'s summary for ${input.rangeLabel}: ${summary.totalHours}h logged, ${summary.tasksCompleted} tasks completed, ${summary.tasksInProgress} in progress.`;
       return NextResponse.json({ reply, summary });
+    }
+
+    const teamSummaryCall = toolUses.find((t) => t.name === "get_team_summary");
+    if (teamSummaryCall) {
+      const input = teamSummaryCall.input as { projectIds?: string[]; rangeStart: string; rangeEnd: string; rangeLabel: string };
+      const managedIds = members.filter((m) => m.userId === actorId && m.role === "manager").map((m) => m.projectId);
+      if (managedIds.length === 0) {
+        return NextResponse.json({ reply: "You don't manage any projects, so there's no team summary to pull." });
+      }
+      // Never trust the model's project list as-is — only ids the actor actually manages survive.
+      const requested = (input.projectIds ?? []).filter((id) => managedIds.includes(id));
+      const scopeProjectIds = requested.length ? requested : managedIds;
+      const scopeLabel =
+        scopeProjectIds.length > 1
+          ? `${scopeProjectIds.map((id) => projects.find((p) => p.id === id)?.name ?? id).join(", ")}`
+          : (projects.find((p) => p.id === scopeProjectIds[0])?.name ?? "your team");
+      const teamSummary = buildTeamSummary({
+        scopeLabel,
+        rangeLabel: input.rangeLabel,
+        rangeStart: input.rangeStart,
+        rangeEnd: input.rangeEnd,
+        projectIds: scopeProjectIds,
+        users,
+        projects,
+        members,
+        timesheet,
+      });
+      const reply = textParts.join("\n").trim() || `Team summary for ${scopeLabel} — ${input.rangeLabel}: ${teamSummary.totalHours}h logged across ${teamSummary.byMember.length} people.`;
+      return NextResponse.json({ reply, teamSummary });
     }
 
     const actions: ChatAction[] = [];

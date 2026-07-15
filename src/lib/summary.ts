@@ -1,4 +1,17 @@
-import type { ChatSummary, Project, Task, TimesheetEntry, User } from "@/lib/types";
+import type { HoursBreakdownRow, ChatSummary, ChatSummaryRow, Project, Task, TeamSummary, TimesheetEntry, User } from "@/lib/types";
+
+/** Buckets a set of timesheet entries by approval status — the "invested vs wasted" signal. */
+function bucketByStatus(entries: TimesheetEntry[]): Pick<HoursBreakdownRow, "approvedHours" | "pendingHours" | "rejectedHours" | "hours"> {
+  let approvedHours = 0;
+  let pendingHours = 0;
+  let rejectedHours = 0;
+  for (const e of entries) {
+    if (e.status === "approved") approvedHours += e.hours;
+    else if (e.status === "pending") pendingHours += e.hours;
+    else rejectedHours += e.hours;
+  }
+  return { approvedHours, pendingHours, rejectedHours, hours: approvedHours + pendingHours + rejectedHours };
+}
 
 export function buildSummary(params: {
   targetUser: User;
@@ -20,13 +33,14 @@ export function buildSummary(params: {
   const tasksInProgress = tasks.filter((t) => t.assigneeId === targetUser.id && t.status === "in_progress").length;
 
   const entries = timesheet.filter((e) => e.userId === targetUser.id && inRange(e.date));
-  const totalHours = entries.reduce((sum, e) => sum + e.hours, 0);
-  const pendingHours = entries.filter((e) => e.status === "pending").reduce((sum, e) => sum + e.hours, 0);
+  const overall = bucketByStatus(entries);
 
-  const byProjectMap = new Map<string, number>();
-  for (const e of entries) byProjectMap.set(e.projectId, (byProjectMap.get(e.projectId) ?? 0) + e.hours);
-  const byProject = Array.from(byProjectMap.entries())
-    .map(([projectId, hours]) => ({ projectId, projectName: projectName(projectId), hours }))
+  const projectIds = Array.from(new Set(entries.map((e) => e.projectId)));
+  const byProject: ChatSummaryRow[] = projectIds
+    .map((projectId) => {
+      const bucket = bucketByStatus(entries.filter((e) => e.projectId === projectId));
+      return { key: projectId, label: projectName(projectId), projectId, projectName: projectName(projectId), ...bucket };
+    })
     .sort((a, b) => b.hours - a.hours);
 
   const csvRows: string[][] = [["Date", "Project", "Task", "Hours", "Note", "Status"]];
@@ -41,9 +55,66 @@ export function buildSummary(params: {
     rangeLabel,
     tasksCompleted,
     tasksInProgress,
-    totalHours,
-    pendingHours,
+    totalHours: overall.hours,
+    approvedHours: overall.approvedHours,
+    pendingHours: overall.pendingHours,
+    rejectedHours: overall.rejectedHours,
     byProject,
+    csvRows,
+  };
+}
+
+/**
+ * Manager-only rollup across one or more projects they manage: hours by
+ * project and hours by team member, each split into approved/pending/
+ * rejected so a manager can see both where time goes and how much of it
+ * was actually validated versus wasted.
+ */
+export function buildTeamSummary(params: {
+  scopeLabel: string;
+  rangeLabel: string;
+  rangeStart: string;
+  rangeEnd: string;
+  projectIds: string[];
+  users: User[];
+  projects: Project[];
+  members: { userId: string; projectId: string }[];
+  timesheet: TimesheetEntry[];
+}): TeamSummary {
+  const { scopeLabel, rangeLabel, rangeStart, rangeEnd, projectIds, users, projects, members, timesheet } = params;
+  const inRange = (date: string) => date >= rangeStart && date <= rangeEnd;
+  const projectIdSet = new Set(projectIds);
+  const projectName = (id: string) => projects.find((p) => p.id === id)?.name ?? "Unknown project";
+  const userName = (id: string) => users.find((u) => u.id === id)?.name ?? "Unknown";
+
+  const entries = timesheet.filter((e) => projectIdSet.has(e.projectId) && inRange(e.date));
+  const overall = bucketByStatus(entries);
+
+  const byProject: HoursBreakdownRow[] = projectIds
+    .map((projectId) => ({ key: projectId, label: projectName(projectId), ...bucketByStatus(entries.filter((e) => e.projectId === projectId)) }))
+    .filter((row) => row.hours > 0)
+    .sort((a, b) => b.hours - a.hours);
+
+  const memberUserIds = Array.from(new Set(members.filter((m) => projectIdSet.has(m.projectId)).map((m) => m.userId)));
+  const byMember: HoursBreakdownRow[] = memberUserIds
+    .map((userId) => ({ key: userId, label: userName(userId), ...bucketByStatus(entries.filter((e) => e.userId === userId)) }))
+    .filter((row) => row.hours > 0)
+    .sort((a, b) => b.hours - a.hours);
+
+  const csvRows: string[][] = [["User", "Project", "Date", "Task", "Hours", "Status"]];
+  for (const e of [...entries].sort((a, b) => a.date.localeCompare(b.date))) {
+    csvRows.push([userName(e.userId), projectName(e.projectId), e.date, e.taskId ?? "", String(e.hours), e.status]);
+  }
+
+  return {
+    scopeLabel,
+    rangeLabel,
+    totalHours: overall.hours,
+    approvedHours: overall.approvedHours,
+    pendingHours: overall.pendingHours,
+    rejectedHours: overall.rejectedHours,
+    byProject,
+    byMember,
     csvRows,
   };
 }

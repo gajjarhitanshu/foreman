@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import * as api from "@/lib/api";
-import { toCsv } from "@/lib/csv";
+import { downloadReportXlsx } from "@/lib/xlsx-export";
+import { statusPieSegments, distributionPieSegments } from "@/components/chat/pie-chart";
 import type {
   ChatAction,
   ChatActionResult,
@@ -65,7 +66,8 @@ interface AppState {
   sendChatMessage: (content: string) => Promise<void>;
   resolveChatTurn: (messageId: string, confirm: boolean) => Promise<void>;
   resolveClarify: (messageId: string, value: string) => Promise<void>;
-  exportSummaryCsv: (messageId: string) => void;
+  exportSummaryReport: (messageId: string) => Promise<void>;
+  exportTeamSummaryReport: (messageId: string) => Promise<void>;
 }
 
 function systemMessage(content: string): ChatMessage {
@@ -266,6 +268,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         turnStatus: result.actions?.length ? "pending" : undefined,
         clarify: result.clarify,
         summary: result.summary,
+        teamSummary: result.teamSummary,
         createdAt: new Date().toISOString(),
       };
       set({ chat: [...get().chat, assistantMsg], chatPending: false });
@@ -324,17 +327,37 @@ export const useAppStore = create<AppState>((set, get) => ({
     await get().sendChatMessage(value);
   },
 
-  exportSummaryCsv: (messageId) => {
+  exportSummaryReport: async (messageId) => {
     const msg = get().chat.find((m) => m.id === messageId);
     if (!msg?.summary) return;
-    const csv = toCsv(msg.summary.csvRows);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${msg.summary.userName.replace(/\s+/g, "-").toLowerCase()}-summary.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const { summary } = msg;
+    await downloadReportXlsx({
+      filename: `${summary.userName.replace(/\s+/g, "-").toLowerCase()}-summary.xlsx`,
+      title: summary.userName,
+      rangeLabel: summary.rangeLabel,
+      csvRows: summary.csvRows,
+      charts: [
+        { title: "Approved vs. pending vs. rejected", segments: statusPieSegments(summary) },
+        { title: "Distribution by project", segments: distributionPieSegments(summary.byProject) },
+      ],
+    });
+  },
+
+  exportTeamSummaryReport: async (messageId) => {
+    const msg = get().chat.find((m) => m.id === messageId);
+    if (!msg?.teamSummary) return;
+    const { teamSummary } = msg;
+    await downloadReportXlsx({
+      filename: `${teamSummary.scopeLabel.replace(/\s+/g, "-").toLowerCase()}-team-summary.xlsx`,
+      title: teamSummary.scopeLabel,
+      rangeLabel: teamSummary.rangeLabel,
+      csvRows: teamSummary.csvRows,
+      charts: [
+        { title: "Approved vs. pending vs. rejected", segments: statusPieSegments(teamSummary) },
+        { title: "Distribution by project", segments: distributionPieSegments(teamSummary.byProject) },
+        { title: "Distribution by person", segments: distributionPieSegments(teamSummary.byMember) },
+      ],
+    });
   },
 }));
 

@@ -3,10 +3,12 @@
 import { Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/app-store";
+import { HoursBarList } from "@/components/chat/hours-bar-list";
+import { PieChart, statusPieSegments, distributionPieSegments } from "@/components/chat/pie-chart";
 import type { ChatSummary } from "@/lib/types";
 
 export function SummaryCard({ messageId, summary }: { messageId: string; summary: ChatSummary }) {
-  const exportSummaryCsv = useAppStore((s) => s.exportSummaryCsv);
+  const exportSummaryReport = useAppStore((s) => s.exportSummaryReport);
 
   return (
     <div className="rounded-xl border bg-card p-3.5 text-sm shadow-sm">
@@ -20,20 +22,19 @@ export function SummaryCard({ messageId, summary }: { messageId: string; summary
         <Stat label="Pending hours" value={`${summary.pendingHours}h`} tone={summary.pendingHours > 0 ? "warning" : undefined} />
       </div>
 
-      {summary.byProject.length > 0 && (
-        <div className="mt-3 space-y-1 border-t border-border pt-2.5">
-          {summary.byProject.map((row) => (
-            <div key={row.projectId} className="flex items-center justify-between text-xs">
-              <span className="text-foreground">{row.projectName}</span>
-              <span className="tabular-nums text-muted-foreground">{row.hours}h</span>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="mt-3 border-t border-border pt-2.5">
+        <p className="mb-2 text-[11px] font-medium text-muted-foreground">Hours by project — invested vs. wasted</p>
+        <HoursBarList rows={summary.byProject} emptyLabel="No hours logged in this range." />
+      </div>
 
-      <Button size="sm" variant="outline" className="mt-3 gap-1.5" onClick={() => exportSummaryCsv(messageId)}>
+      <div className="mt-3 grid grid-cols-1 gap-3 border-t border-border pt-2.5 sm:grid-cols-2">
+        <PieChart title="Approved vs. pending vs. rejected" segments={statusPieSegments(summary)} />
+        <PieChart title="Distribution by project" segments={distributionPieSegments(summary.byProject)} />
+      </div>
+
+      <Button size="sm" variant="outline" className="mt-3 gap-1.5" onClick={() => void exportSummaryReport(messageId)}>
         <Download className="size-3.5" />
-        Export as CSV
+        Export as Excel
       </Button>
     </div>
   );

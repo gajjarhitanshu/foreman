@@ -8,6 +8,7 @@ import type {
   Task,
   TaskPriority,
   TaskStatus,
+  TeamSummary,
   TimesheetEntry,
   User,
 } from "@/lib/types";
@@ -149,6 +150,7 @@ export interface ChatTurnResponse {
   actions?: ChatAction[];
   clarify?: ChatClarify;
   summary?: ChatSummary;
+  teamSummary?: TeamSummary;
 }
 
 export async function sendChat(

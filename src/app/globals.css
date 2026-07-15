@@ -46,6 +46,23 @@
   --color-warning: var(--warning);
   --color-danger: var(--danger);
   --color-info: var(--info);
+  /* Dedicated chart-fill shades — dark mode needs deeper values than the
+     badge tokens above to stay CVD-accessible against the dark surface
+     (validated with dataviz's validate_palette.js); light mode matches. */
+  --color-chart-success: var(--chart-success);
+  --color-chart-warning: var(--chart-warning);
+  --color-chart-danger: var(--chart-danger);
+  /* Categorical palette for pie/donut distribution charts (by project, by
+     member) — validated for CVD-safe adjacency with dataviz's
+     validate_palette.js against this app's card surfaces, light and dark.
+     Slot order is the safety mechanism: never reassign or cycle past 6. */
+  --color-chart-cat-1: var(--chart-cat-1);
+  --color-chart-cat-2: var(--chart-cat-2);
+  --color-chart-cat-3: var(--chart-cat-3);
+  --color-chart-cat-4: var(--chart-cat-4);
+  --color-chart-cat-5: var(--chart-cat-5);
+  --color-chart-cat-6: var(--chart-cat-6);
+  --color-chart-cat-other: var(--chart-cat-other);
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
@@ -78,6 +95,16 @@
   --success: #16a34a;
   --warning: #d97706;
   --info: #0284c7;
+  --chart-success: #16a34a;
+  --chart-warning: #d97706;
+  --chart-danger: #dc2626;
+  --chart-cat-1: #2a78d6; /* blue */
+  --chart-cat-2: #008300; /* green */
+  --chart-cat-3: #e87ba4; /* magenta */
+  --chart-cat-4: #eda100; /* yellow */
+  --chart-cat-5: #1baf7a; /* aqua */
+  --chart-cat-6: #eb6834; /* orange */
+  --chart-cat-other: #9a988f;
   --border: #e4e5e8; /* border-default */
   --input: #e4e5e8;
   --ring: #4f46e5;
@@ -120,6 +147,16 @@
   --success: #22c55e;
   --warning: #f59e0b;
   --info: #38bdf8;
+  --chart-success: #16a34a;
+  --chart-warning: #d97706;
+  --chart-danger: #ef4444;
+  --chart-cat-1: #3987e5; /* blue */
+  --chart-cat-2: #008300; /* green */
+  --chart-cat-3: #d55181; /* magenta */
+  --chart-cat-4: #c98500; /* yellow */
+  --chart-cat-5: #199e70; /* aqua */
+  --chart-cat-6: #d95926; /* orange */
+  --chart-cat-other: #7a786f;
   --border: #2a2d36;
   --input: #2a2d36;
   --ring: #6366f1;

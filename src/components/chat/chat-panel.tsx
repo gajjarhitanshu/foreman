@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
 import { ConfirmationCard } from "@/components/chat/confirmation-card";
 import { SummaryCard } from "@/components/chat/summary-card";
+import { TeamSummaryCard } from "@/components/chat/team-summary-card";
 import { ClarifyChips } from "@/components/chat/clarify-chips";
 import { roleOn } from "@/lib/permissions";
 
@@ -79,6 +80,8 @@ export function ChatPanel({ variant = "dock" }: { variant?: "dock" | "full" }) {
               {message.clarify && <ClarifyChips messageId={message.id} options={message.clarify.options} resolved={message.clarifyResolved} />}
 
               {message.summary && <SummaryCard messageId={message.id} summary={message.summary} />}
+
+              {message.teamSummary && <TeamSummaryCard messageId={message.id} teamSummary={message.teamSummary} />}
             </div>
           </div>
         ))}
